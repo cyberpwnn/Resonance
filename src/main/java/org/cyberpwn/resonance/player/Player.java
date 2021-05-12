@@ -1,30 +1,44 @@
 package org.cyberpwn.resonance.player;
 
-import org.cyberpwn.resonance.RConfig;
+import net.minecraft.client.Minecraft;
+import net.minecraft.util.SoundCategory;
+import org.cyberpwn.resonance.Resonance;
+import org.cyberpwn.resonance.config.ResonanceConfig;
 
-public interface ResonancePlayer {
+public interface Player {
     /**
      * Fade in & Start Playing
      */
-    void play(long startTime) throws Throwable;
-
-    default void play() throws Throwable
-    {
-        play(0l);
-    }
+    void play() throws Throwable;
 
     /**
      * Fade out & stop playing
      */
     default void stop() throws InterruptedException {
+        if(hasVolumeMultiplier("stop"))
+        {
+            return;
+        }
+
+        addVolumeMultiplier("stop", 0);
         waitForVolumeTarget();
-        destroy();
+        Resonance.execute(() -> {
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            destroy();
+        });
     }
+
+    boolean hasVolumeMultiplier(String stop);
 
     default void waitForVolumeTarget() throws InterruptedException {
         while(!isOnTarget())
         {
-            Thread.sleep(RConfig.volumeLatency);
+            Thread.sleep(ResonanceConfig.volumeLatency);
         }
     }
 
@@ -36,6 +50,19 @@ public interface ResonancePlayer {
      */
     long getTimeRemaining();
 
+    default long getTimeRemainingFadeOut()
+    {
+        long v = getTimeRemaining() - ResonanceConfig.transitionLatency;
+        return v < 0 ? 0 : v;
+    }
+
+    default double getMinecraftVolume()
+    {
+        return Minecraft.getMinecraft().gameSettings.getSoundLevel(SoundCategory.MUSIC) * Minecraft.getMinecraft().gameSettings.getSoundLevel(SoundCategory.MASTER);
+    }
+
+    public String getId();
+
     boolean isPlaying();
 
     void addVolumeMultiplier(String key, double volume);
@@ -45,4 +72,6 @@ public interface ResonancePlayer {
     double getTargetVolume();
 
     boolean isOnTarget();
+
+    long getTimecode();
 }

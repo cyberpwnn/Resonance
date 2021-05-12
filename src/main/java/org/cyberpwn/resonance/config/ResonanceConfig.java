@@ -1,9 +1,10 @@
-package org.cyberpwn.resonance;
+package org.cyberpwn.resonance.config;
 
 import net.minecraftforge.common.config.Config;
+import org.cyberpwn.resonance.Resonance;
 
 @Config(modid = Resonance.MODID)
-public class RConfig {
+public class ResonanceConfig {
     @Config.Name("Continuous Playback")
     @Config.Comment("If there is no music to play that match the category, fill the queue with random songs so that at least some music will always be playing.")
     public static boolean continuousPlayback = true;
@@ -27,6 +28,10 @@ public class RConfig {
     @Config.Name("Transition Latency")
     @Config.Comment("When a song ends, how quickly should the next song start? This is at the start of a fade out, or the beginning of a fade in. Setting this too low will cause a lot of cpu issues, setting this too high will cause silence between songs.")
     public static int transitionLatency = 1000;
+
+    @Config.Name("Sticky Playback")
+    @Config.Comment("If the queue is dumped (because of changing tags) and there is nothing to play, keep playing the current song instead of fading out the song (since it's not technically valid to play with the current tag situation).")
+    public static boolean stickyPlayback = true;
 
     @Config.Name("Volume Smoothness")
     @Config.Comment("Setting this higher will make the volume transitions take longer. Setting this smaller will make transitions happen faster. Keep this above 1 for best results.")

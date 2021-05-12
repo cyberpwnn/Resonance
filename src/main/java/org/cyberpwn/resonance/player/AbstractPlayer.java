@@ -1,30 +1,50 @@
 package org.cyberpwn.resonance.player;
 
-import org.cyberpwn.resonance.RConfig;
+import org.cyberpwn.resonance.config.ResonanceConfig;
 import org.cyberpwn.resonance.Resonance;
-import scala.reflect.internal.Trees;
 
 import java.util.HashMap;
 import java.util.Map;
 
-public abstract class AbstractResonancePlayer implements ResonancePlayer
+public abstract class AbstractPlayer implements Player
 {
     private final Map<String, Double> volumeMultipliers;
     private double volume;
     private boolean onTarget;
+    private long startTime;
+    private boolean playing;
 
-    public AbstractResonancePlayer() throws Throwable {
+    public AbstractPlayer(long startTime) throws Throwable {
         this.volume = 0;
         this.onTarget = false;
+        this.startTime = startTime;
         this.volumeMultipliers = new HashMap<>();
+        playing = false;
         setVolume(volume);
-        play();
+    }
+
+    public boolean hasVolumeMultiplier(String k)
+    {
+        return volumeMultipliers.containsKey(k);
+    }
+
+    public long getStartTime()
+    {
+        return startTime;
+    }
+
+    public abstract void onPlay() throws Throwable;
+
+    @Override
+    public void play() throws Throwable {
+        onPlay();
         Resonance.execute(() -> {
+            playing = true;
             while(isPlaying())
             {
                 tick();
                 try {
-                    Thread.sleep(isOnTarget() ? RConfig.volumeLatency : RConfig.volumeTickRate);
+                    Thread.sleep(isOnTarget() ? ResonanceConfig.volumeLatency : ResonanceConfig.volumeTickRate);
                 } catch (InterruptedException e) {
                     break;
                 }
@@ -32,11 +52,16 @@ public abstract class AbstractResonancePlayer implements ResonancePlayer
         });
     }
 
+    @Override
+    public boolean isPlaying() {
+        return playing;
+    }
+
     private void tick()
     {
         double v = getVolume();
         double t = getTargetVolume();
-        double factor = (Math.abs(t - v) / RConfig.fadeDurationMS) * RConfig.volumeTickRate;
+        double factor = (Math.abs(t - v) / ResonanceConfig.fadeDurationMS) * ResonanceConfig.volumeTickRate * 4;
 
         if(volume != t)
         {
@@ -45,12 +70,25 @@ public abstract class AbstractResonancePlayer implements ResonancePlayer
             setVolume(parametric(volume));
         }
 
-        onTarget = true;
+        else
+        {
+            onTarget = true;
+        }
 
-        if(getTimeRemaining() < (RConfig.fadeDurationMS + RConfig.volumeLatency) && !volumeMultipliers.containsKey("ending-fadeout"))
+        if(Math.abs(volume - t) < 0.03)
+        {
+            volume = t;
+        }
+
+        if(getTimeRemaining() < (ResonanceConfig.fadeDurationMS + ResonanceConfig.volumeLatency) && !volumeMultipliers.containsKey("ending-fadeout"))
         {
             addVolumeMultiplier("ending-fadeout", 0);
         }
+    }
+
+    public void stopped()
+    {
+        playing = false;
     }
 
     protected abstract void setVolume(double volume);
@@ -97,7 +135,7 @@ public abstract class AbstractResonancePlayer implements ResonancePlayer
             volumeMultipliers.remove(drop);
         }
 
-        return v > 1 ? 1 : v < 0 ? 0 : v;
+        return (v > 1 ? 1 : v < 0 ? 0 : v) * getMinecraftVolume();
     }
 
     @Override

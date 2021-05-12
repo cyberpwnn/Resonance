@@ -1,4 +1,6 @@
-package org.cyberpwn.resonance.player;
+package org.cyberpwn.resonance.util;
+
+import org.cyberpwn.resonance.player.FilePlayer;
 
 import javax.swing.*;
 import java.io.File;
@@ -9,7 +11,10 @@ import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.util.concurrent.CountDownLatch;
 
+
 public class JFXInjector {
+public static ClassLoader loader;
+
     public static void inject() {
         File jfx = new File("lib/jfxrt.jar");
 
@@ -31,7 +36,7 @@ public class JFXInjector {
             URLClassLoader child = new URLClassLoader(
                     new URL[] {jfx.toURI().toURL()},
                     JFXInjector.class.getClassLoader());
-
+            loader = child;
 
             final CountDownLatch latch = new CountDownLatch(1);
 
@@ -39,6 +44,8 @@ public class JFXInjector {
                 try {
                     System.out.println("Starting jfxrt");
                     child.loadClass("javafx.embed.swing.JFXPanel").getConstructor().newInstance();
+                    child.loadClass("javafx.scene.media.MediaPlayer");
+                    child.loadClass("org.cyberpwn.resonance.player.FilePlayer");
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
