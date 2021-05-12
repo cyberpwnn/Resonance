@@ -12,33 +12,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ForkJoinPool;
 
 public class RPlayer {
-    private static boolean initialized = false;
-
-    public static void ensureInitialized()
-    {
-        if(initialized)
-        {
-            return;
-        }
-        initialized = true;
-        final CountDownLatch latch = new CountDownLatch(1);
-        SwingUtilities.invokeLater(new Runnable() {
-            public void run() {
-                new JFXPanel(); // initializes JavaFX environment
-                latch.countDown();
-            }
-        });
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
     private boolean newsong = false;
     private List<File> queue;
     private File nowPlaying;
-    private RFilePlayer player;
+    private RFilePlayerTicked player;
     private Map<File, Long> timecodes;
     private boolean active = true;
     private long fadeDuration;
@@ -48,7 +25,6 @@ public class RPlayer {
     {
         this.playable = playable;
         this.fadeDuration = fadeDuration;
-        ensureInitialized();
         queue = new ArrayList<>();
         nowPlaying = null;
         timecodes = new HashMap<>();
@@ -58,7 +34,7 @@ public class RPlayer {
                 try
                 {
                     tick();
-                    Thread.sleep(250);
+                    Thread.sleep(RConfig.songLoaderTickRateMS);
                 }
 
                 catch(Throwable e)
@@ -80,14 +56,17 @@ public class RPlayer {
     }
 
     private void tick() {
+        fadeDuration = RConfig.fadeDurationMS;
         playable.run();
 
         if(player != null)
         {
+            player.tick();
+
             if(nowPlaying == null)
             {
                 // Now playing is null. Fade out currently playing song
-                RFilePlayer ff = player;
+                RFilePlayerTicked ff = player;
                 timecodes.put(ff.getFile(), ff.getTimeCode());
                 ForkJoinPool.commonPool().execute(ff::die);
                 player = null;
@@ -97,10 +76,10 @@ public class RPlayer {
             else if(!player.getFile().equals(nowPlaying))
             {
                 // New "now playing". CROSSFADE TO NEW FILE
-                RFilePlayer ff = player;
+                RFilePlayerTicked ff = player;
                 timecodes.put(ff.getFile(), ff.getTimeCode());
                 ForkJoinPool.commonPool().execute(ff::die);
-                player = new RFilePlayer(nowPlaying, timecodes.compute(nowPlaying, (k, v) -> v == null ? 0 : v), fadeDuration, fadeDuration);
+                player = new RFilePlayerTicked(nowPlaying, timecodes.compute(nowPlaying, (k, v) -> v == null ? 0 : v), fadeDuration, fadeDuration);
                 System.out.print("Now Playing [" + nowPlaying.getName() + "] <-");
                 for(File i : queue)
                 {
@@ -117,7 +96,7 @@ public class RPlayer {
 
         else if(nowPlaying != null)
         {
-            player = new RFilePlayer(nowPlaying, timecodes.compute(nowPlaying, (k, v) -> v == null ? 0 : v), fadeDuration, fadeDuration);
+            player = new RFilePlayerTicked(nowPlaying, timecodes.compute(nowPlaying, (k, v) -> v == null ? 0 : v), fadeDuration, fadeDuration);
             System.out.print("Now Playing [" + nowPlaying.getName() + "] <-");
             for(File i : queue)
             {
@@ -194,7 +173,7 @@ public class RPlayer {
         return queue;
     }
 
-    public RFilePlayer getPlayer() {
+    public RFilePlayerTicked getPlayer() {
         return player;
     }
 }

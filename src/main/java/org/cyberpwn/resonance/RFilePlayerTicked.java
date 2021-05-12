@@ -4,16 +4,13 @@ import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.util.Duration;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.toasts.GuiToast;
-import net.minecraft.client.gui.toasts.IToast;
 import net.minecraft.client.gui.toasts.SystemToast;
 import net.minecraft.util.text.TextComponentString;
-import scala.reflect.internal.Trees;
 
 import java.io.File;
 import java.util.concurrent.ForkJoinPool;
 
-public class RFilePlayer
+public class RFilePlayerTicked
 {
     private final MediaPlayer player;
     private long startTime = 0;
@@ -23,10 +20,13 @@ public class RFilePlayer
     private boolean playing;
     private boolean fadingOut;
     private File file;
+    private double targetVolume;
+    private boolean onTarget = false;
 
-    public RFilePlayer(File file, long startAt, long fadeInMS, long fadeOutMS)
+    public RFilePlayerTicked(File file, long startAt, long fadeInMS, long fadeOutMS)
     {
         this.file = file;
+        targetVolume = 1;
         Media media = new Media(file.toURI().toString());
         this.fadeInMS = fadeInMS;
         this.fadeOutMS = fadeOutMS;
@@ -47,6 +47,48 @@ public class RFilePlayer
         {
 
         }
+
+
+    }
+
+    public void targetVolume(double v)
+    {
+        this.targetVolume = v;
+    }
+
+    public boolean tick()
+    {
+        double targetVolume = this.targetVolume * Resonance.volumeMultiplier;
+        if(targetVolume != player.getVolume())
+        {
+            if(player.getVolume() > targetVolume)
+            {
+                player.setVolume(player.getVolume() - ((player.getVolume() - targetVolume)/RConfig.volumeSmoothness));
+            }
+
+            else
+            {
+                player.setVolume(player.getVolume() + ((targetVolume - player.getVolume())/RConfig.volumeSmoothness));
+            }
+
+            System.out.println(player.getVolume());
+
+            if(Math.abs(player.getVolume() - targetVolume) < 0.01)
+            {
+                player.setVolume(targetVolume);
+            }
+
+            onTarget = false;
+            return true;
+        }
+
+        onTarget = true;
+        return false;
+    }
+
+    double lerp(double a, double b, double f)
+    {
+        return a + f * (b - a);
     }
 
     public File getFile()
@@ -74,85 +116,65 @@ public class RFilePlayer
     }
     private void onPlaying() {
         startTime = System.currentTimeMillis();
-        totalDuration = player.getTotalDuration().toMillis();
+
         ForkJoinPool.commonPool().execute(() -> {
-            long m = (long) (totalDuration - (fadeOutMS + 200));
+            long m = (long) (totalDuration - (5000));
 
             if(m < 0)
             {
-                try {
-                    fadeOut(3000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-
+                targetVolume = 0;
                 return;
             }
 
             try {
                 Thread.sleep(m);
-                fadeOut(fadeOutMS);
+                targetVolume = 0;
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         });
-        ForkJoinPool.commonPool().execute(() -> {
-            try {
-                fadeIn(fadeInMS);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+        targetVolume = 1;
+
+        Thread ticker = new Thread(() -> {
+            while(playing)
+            {
+                try
+                {
+                    Thread.sleep(tick() ? RConfig.volumeTickRate : RConfig.volumeLatency);
+                }
+
+                catch(Throwable e)
+                {
+                    System.out.println("Failed to tick RPlayer");
+                    e.printStackTrace();
+                }
             }
         });
-    }
-
-    private void fadeIn(long duration) throws InterruptedException {
-        double at = System.currentTimeMillis();
-
-        while(System.currentTimeMillis() < at + duration)
-        {
-            Thread.sleep(50);
-            double now = System.currentTimeMillis();
-            player.setVolume(((now - at) / duration) * Resonance.volumeMultiplier);
-        }
-
-        player.setVolume(Resonance.volumeMultiplier);
+        ticker.setPriority(Thread.MAX_PRIORITY);
+        ticker.start();
     }
 
     public void die()
     {
-        try {
-            fadeOut(fadeOutMS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        player.dispose();
-    }
-
-    public void dieFast()
-    {
-        try {
-            fadeOut(1500);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        player.dispose();
-    }
-
-
-    private void fadeOut(long duration) throws InterruptedException {
-        double at = System.currentTimeMillis();
-
-        while(System.currentTimeMillis() < at + duration)
+        targetVolume = 0;
+        onTarget = false;
+        while(!onTarget)
         {
-            Thread.sleep(50);
-            double now = System.currentTimeMillis();
-            player.setVolume((1-((now - at) / duration)) * Resonance.volumeMultiplier);
+            try {
+                Thread.sleep(50);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
-
-        player.setVolume(0);
+        playing = false;
+        player.dispose();
     }
 
-
+    private float parametric(float t)
+    {
+        float sqt = t * t;
+        return sqt / (2.0f * (sqt - t) + 1.0f);
+    }
 
     public void updateVolume() {
         if(player == null)

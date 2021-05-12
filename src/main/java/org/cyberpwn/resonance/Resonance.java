@@ -2,17 +2,13 @@ package org.cyberpwn.resonance;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
-import net.minecraft.init.Blocks;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.SoundCategory;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.TextComponentString;
 import net.minecraft.world.DimensionType;
 import net.minecraft.world.biome.Biome;
-import net.minecraftforge.client.MinecraftForgeClient;
 import net.minecraftforge.client.event.ClientChatEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
-import net.minecraftforge.client.event.RenderWorldLastEvent;
 import net.minecraftforge.client.event.sound.PlaySoundEvent;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.MinecraftForge;
@@ -22,27 +18,28 @@ import net.minecraftforge.fml.common.event.FMLInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLLoadCompleteEvent;
 import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
-import net.minecraftforge.fml.common.eventhandler.EventBus;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
-import net.minecraftforge.fml.common.gameevent.TickEvent;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
 import org.apache.logging.log4j.Logger;
-import org.lwjgl.Sys;
-import scala.reflect.internal.Trees;
+import org.cyberpwn.resonance.player.JFXInjector;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
-@Mod(modid = Resonance.MODID, name = Resonance.NAME, version = Resonance.VERSION, clientSideOnly = true)
+@Mod(modid = Resonance.MODID, name = Resonance.NAME, version = Resonance.VERSION, useMetadata = true)
 public class Resonance
 {
+    private static ExecutorService pool;
+    private static int poolThreadCount = 1;
     public static final String MODID = "resonance";
     public static final String NAME = "Resonance";
-    public static final String VERSION = "1.0";
+    public static final String VERSION = "@VERSION@";
     private RPlayer player;
     private static Logger logger;
+    private static long last = 0;
     private static File folder;
     private Set<String> triggers;
     private int lastTriggers = 0;
@@ -56,6 +53,23 @@ public class Resonance
         triggers.add("startup");
         triggers.add("startup.preinit");
         player = new RPlayer(2500, this::tick);
+    }
+
+    public static void execute(Runnable r)
+    {
+        pool.execute(r);
+    }
+
+    private static void onStartup()
+    {
+        JFXInjector.inject();
+        pool = Executors.newCachedThreadPool(r -> {
+            Thread t = new Thread(r);
+            t.setName("Resonator " + poolThreadCount++);
+            t.setPriority(Thread.MAX_PRIORITY);
+            t.setUncaughtExceptionHandler((t1, e) -> e.printStackTrace());
+            return t;
+        });
     }
 
     private void gen(File folder) {
@@ -127,18 +141,36 @@ public class Resonance
     }
 
     private void tick() {
-        updateTriggers();
+        if(System.currentTimeMillis() - last > RConfig.songLoaderCooldown)
+        {
+            updateTriggers();
+        }
         if(triggers.hashCode() == lastTriggers)
         {
             return;
         }
 
+        last = System.currentTimeMillis();
         List<File> f = new ArrayList<>();
+        File random = null;
 
         searching: for(File i : folder.listFiles())
         {
             if(i.getName().endsWith(".mp3"))
             {
+                if(RConfig.continuousPlayback)
+                {
+                    if(random != null && Math.random() < 0.3)
+                    {
+                        random = i;
+                    }
+
+                    else if(random == null)
+                    {
+                        random = i;
+                    }
+                }
+
                 String[] ftags = i.getName().replaceAll("\\Q.mp3\\E", "").split("\\Q \\E");
 
                 for(String j : ftags)
@@ -191,6 +223,11 @@ public class Resonance
             }
         }
 
+        if(f.isEmpty() && RConfig.continuousPlayback)
+        {
+            f.add(random);
+        }
+
         Collections.shuffle(f);
         player.replaceQueue(f);
 
@@ -221,7 +258,7 @@ public class Resonance
 
             if(player.getPlayer() != null && lastVolume != volumeMultiplier)
             {
-                player.getPlayer().updateVolume(lastVolume);
+                player.getPlayer().updateVolume();
                 lastVolume = volumeMultiplier;
             }
 
@@ -428,18 +465,15 @@ public class Resonance
             return;
         }
 
-        for(String i : triggers) {
-            event.getRight().add(i);
-        }
+        event.getRight().add("");
 
         try
         {
-            event.getRight().add("Now Playing [" + player.getNowPlaying().getName());
-            StringBuilder f = new StringBuilder();
-            f = new StringBuilder("Now Playing [" + player.getNowPlaying().getName() + "] <-");
+            event.getRight().add("Now Playing " + player.getNowPlaying().getName().split("\\Q \\E")[0]);
+
             for(File i : player.getQueue())
             {
-                event.getRight().add("<- " + i.getName());
+                event.getRight().add("<- " + i.getName().split("\\Q \\E")[0]);
             }
         }
 
@@ -476,5 +510,10 @@ public class Resonance
         gen(folder);
         triggers.remove("startup");
         triggers.remove("startup.postinit");
+    }
+
+    static
+    {
+        onStartup();
     }
 }
