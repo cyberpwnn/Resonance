@@ -31,36 +31,27 @@ public class ResonanceQueue implements Queue{
 
     public void tick()
     {
-        if(getNowPlaying() != null)
+        try
         {
-            try
+            if(getNowPlaying() != null && getNowPlaying().getTimeRemainingFadeOut() < ResonanceConfig.transitionLatency)
             {
-
+                setNowPlaying(null);
             }
 
-            catch(Throwable e)
+            if(getNowPlaying() == null && hasNextSong())
             {
-
+                setNowPlaying(getQueue().remove(0));
             }
-        }
 
-        if(getNowPlaying() != null && getNowPlaying().getTimeRemainingFadeOut() < ResonanceConfig.transitionLatency)
-        {
-            setNowPlaying(null);
-        }
-
-        if(getNowPlaying() == null && hasNextSong())
-        {
-            setNowPlaying(getQueue().remove(0));
-        }
-
-        if(getNowPlaying() != null && !getNowPlaying().isPlaying())
-        {
-            try {
+            if(getNowPlaying() != null && !getNowPlaying().isPlaying())
+            {
                 getNowPlaying().play();
-            } catch (Throwable e) {
-                e.printStackTrace();
             }
+        }
+
+        catch(Throwable e)
+        {
+            e.printStackTrace();
         }
     }
 

@@ -47,6 +47,7 @@ public class Resonance
         JFXInjector.inject();
         pool = Executors.newCachedThreadPool(r -> {
             Thread t = new Thread(r);
+            t.setContextClassLoader(JFXInjector.loader);
             t.setName("Resonator " + poolThreadCount++);
             t.setPriority(Thread.MAX_PRIORITY);
             t.setUncaughtExceptionHandler((t1, e) -> e.printStackTrace());

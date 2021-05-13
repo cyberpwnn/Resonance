@@ -5,17 +5,9 @@ import org.cyberpwn.resonance.Resonance;
 
 @Config(modid = Resonance.MODID)
 public class ResonanceConfig {
-    @Config.Name("Continuous Playback")
-    @Config.Comment("If there is no music to play that match the category, fill the queue with random songs so that at least some music will always be playing.")
-    public static boolean continuousPlayback = true;
-
     @Config.Name("Fade Duration Milliseconds")
     @Config.Comment("The fade in & fade out times in milliseconds (uses parametric curves)")
-    public static int fadeDurationMS = 2500;
-
-    @Config.Name("Song Loader Tick Milliseconds")
-    @Config.Comment("How many milliseconds per song loader tick. 250 = 4 times/second. Setting a slower tick rate will reduce the quality of crossfades, increasing it can cause a song to fade in & out at the same time. Adjust & Test!")
-    public static int songLoaderTickRateMS = 250;
+    public static int fadeDurationMS = 3500;
 
     @Config.Name("Volume Tick Rate")
     @Config.Comment("The volume tick rate. Setting this lower will increase smoothness but dramatically increase cpu usage. 50 = 20/s")
@@ -32,16 +24,4 @@ public class ResonanceConfig {
     @Config.Name("Sticky Playback")
     @Config.Comment("If the queue is dumped (because of changing tags) and there is nothing to play, keep playing the current song instead of fading out the song (since it's not technically valid to play with the current tag situation).")
     public static boolean stickyPlayback = true;
-
-    @Config.Name("Volume Smoothness")
-    @Config.Comment("Setting this higher will make the volume transitions take longer. Setting this smaller will make transitions happen faster. Keep this above 1 for best results.")
-    public static double volumeSmoothness = 14;//TODO: REMOVE ME
-
-    @Config.Name("Song Loader Cooldown")
-    @Config.Comment("After a song queue changes, delay by this much time before trying to change again. Fixes songs changing constantly as you cross through biomes too quickly.")
-    public static int songLoaderCooldown = 5000;
-
-    @Config.Name("Show Now Playing Toast")
-    @Config.Comment("When a new song starts, show a now playing toast (top right) of what song is playing.")
-    public static boolean showNowPlayingToast = true;
 }

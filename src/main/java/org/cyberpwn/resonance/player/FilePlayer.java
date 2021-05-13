@@ -1,16 +1,17 @@
 package org.cyberpwn.resonance.player;
 
-import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import javafx.util.Duration;
 import org.cyberpwn.resonance.util.JFXInjector;
 
 import java.io.File;
+import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.CountDownLatch;
 
 public class FilePlayer extends AbstractPlayer {
     private final File file;
-    private MediaPlayer player;
+    private final Class<?> mediaPlayerClass;
+    private Object player;
     private CountDownLatch startLatch;
     private double totalDuration;
     private boolean onTarget;
@@ -24,6 +25,7 @@ public class FilePlayer extends AbstractPlayer {
         firstPlay = true;
         onTarget = false;
         startLatch = new CountDownLatch(1);
+        mediaPlayerClass = JFXInjector.loader.loadClass("javafx.scene.media.MediaPlayer");
     }
 
     public String toString()
@@ -38,26 +40,66 @@ public class FilePlayer extends AbstractPlayer {
             return;
         }
 
-        player.setVolume(volume);
+        try {
+            player.getClass().getMethod("setVolume", double.class).invoke(player, volume);
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
     protected double getVolume() {
-        return player.getVolume();
+        try {
+            return (double) player.getClass().getMethod("getVolume").invoke(player);
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        }
+
+        return 0;
     }
 
     @Override
     public void onPlay() throws Throwable {
-        Class<?> mediaclass = JFXInjector.loader.loadClass("javafx.scene.media.Media");
-        Class<?> mediaplayerclass = JFXInjector.loader.loadClass("javafx.scene.media.MediaPlayer");
-        player = (MediaPlayer) mediaplayerclass.getConstructor(mediaclass).newInstance(mediaclass.getConstructor(String.class)
+        Thread.currentThread().setContextClassLoader(JFXInjector.loader);
+        Class<?> mcl = JFXInjector.loader.loadClass("javafx.scene.media.Media");
+        player = mediaPlayerClass.getConstructor(mcl).newInstance(mcl.getConstructor(String.class)
                 .newInstance(file.toURI().toString()));
-        player.setVolume(volume);
-        player.setOnPlaying(this::onPlaying);
-        player.setOnEndOfMedia(this::onEnd);
-        player.setStartTime(Duration.millis(getStartTime()));
-        player.play();
+        setVolume(volume);
+
+        try
+        {
+            player.getClass().getMethod("setOnPlaying", Runnable.class).invoke(player, (Runnable) this::onPlaying);
+            player.getClass().getMethod("setOnEndOfMedia", Runnable.class).invoke(player, (Runnable) this::onEnd);
+            player.getClass().getMethod("setStartTime", JFXInjector.loader.loadClass("javafx.util.Duration")).invoke(player, durationOf(getStartTime()));
+            player.getClass().getMethod("play").invoke(player);
+        }
+
+        catch(Throwable e)
+        {
+            e.printStackTrace();
+        }
+
         startLatch.await();
+    }
+
+    private Object durationOf(long ms) throws ClassNotFoundException, NoSuchMethodException {
+        try {
+            return JFXInjector.loader.loadClass("javafx.util.Duration").getMethod("millis", double.class).invoke(null, (double)ms);
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        }
+
+        return null;
     }
 
     @Override
@@ -69,7 +111,8 @@ public class FilePlayer extends AbstractPlayer {
     public long getTimeRemaining() {
         try
         {
-            return (long) (totalDuration - player.getCurrentTime().toMillis());
+            Object dur = player.getClass().getMethod("getCurrentTime").invoke(player);
+            return (long) (totalDuration - (double)dur.getClass().getMethod("toMillis").invoke(dur));
         }
 
         catch(Throwable e)
@@ -92,7 +135,16 @@ public class FilePlayer extends AbstractPlayer {
 
         firstPlay = false;
         startLatch.countDown();
-        totalDuration = player.getTotalDuration().toMillis();
+        try {
+            Object dur = player.getClass().getMethod("getTotalDuration").invoke(player);
+            totalDuration = (double) dur.getClass().getMethod("toMillis").invoke(dur);
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
@@ -100,7 +152,15 @@ public class FilePlayer extends AbstractPlayer {
      */
     private void onEnd()
     {
-        player.dispose();
+        try {
+            player.getClass().getMethod("dispose").invoke(player);
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        }
         stopped();
     }
 
@@ -111,7 +171,18 @@ public class FilePlayer extends AbstractPlayer {
 
     @Override
     public long getTimecode() {
-        return (long) player.getCurrentTime().toMillis();
+        try {
+            Object dur = player.getClass().getMethod("getCurrentTime").invoke(player);
+            return (long) ((double)dur.getClass().getMethod("toMillis").invoke(dur));
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        }
+
+        return -1;
     }
 
     /**
@@ -120,6 +191,17 @@ public class FilePlayer extends AbstractPlayer {
      */
     public long getRemainingTime()
     {
-        return (long) (totalDuration - player.getCurrentTime().toMillis());
+        try {
+            Object dur = player.getClass().getMethod("getCurrentTime").invoke(player);
+            return (long) (totalDuration - (double)dur.getClass().getMethod("toMillis").invoke(dur));
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        }
+
+        return -1;
     }
 }

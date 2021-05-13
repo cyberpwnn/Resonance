@@ -46,6 +46,8 @@ public static ClassLoader loader;
                     child.loadClass("javafx.embed.swing.JFXPanel").getConstructor().newInstance();
                     child.loadClass("javafx.scene.media.MediaPlayer");
                     child.loadClass("org.cyberpwn.resonance.player.FilePlayer");
+
+
                 } catch (Throwable e) {
                     e.printStackTrace();
                 }
