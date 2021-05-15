@@ -90,6 +90,11 @@ public class FilePlayer extends AbstractPlayer {
         startLatch.await();
     }
 
+    @Override
+    protected String getDisplayName() {
+        return file.getName().split("\\Q.\\E")[0];
+    }
+
     private Object durationOf(long ms) throws ClassNotFoundException, NoSuchMethodException {
         try {
             return JFXInjector.loader.loadClass("javafx.util.Duration").getMethod("millis", double.class).invoke(null, (double)ms);
@@ -117,7 +122,7 @@ public class FilePlayer extends AbstractPlayer {
 
         catch(Throwable e)
         {
-
+            e.printStackTrace();
         }
 
         return 100000;

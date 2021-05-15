@@ -40,6 +40,11 @@ public class ResonanceTagManager {
         updatePlayable();
     }
 
+    public List<String> getTags()
+    {
+        return tags;
+    }
+
     public void setPlaytime(Player p)
     {
         playtimes.put(p.getId(), p.getTimecode());
@@ -90,18 +95,21 @@ public class ResonanceTagManager {
             }
         }
 
-        for(String i : getPossibleTags().keySet())
+        if(!configFile.exists())
         {
-            TagCondition tc = new TagCondition();
-            tc.setMode(TagConditionMode.OR);
-            tc.getWhen().add(i);
-            config.getConditions().add(tc);
-            try {
-                PrintWriter pw = new PrintWriter(configFile);
-                pw.println(new GsonBuilder().setPrettyPrinting().create().toJson(config));
-                pw.close();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
+            for(String i : getPossibleTags().keySet())
+            {
+                TagCondition tc = new TagCondition();
+                tc.setMode(TagConditionMode.OR);
+                tc.getWhen().add(i);
+                config.getConditions().add(tc);
+                try {
+                    PrintWriter pw = new PrintWriter(configFile);
+                    pw.println(new GsonBuilder().setPrettyPrinting().create().toJson(config));
+                    pw.close();
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                }
             }
         }
 
@@ -229,6 +237,30 @@ public class ResonanceTagManager {
     }
 
     private boolean isValid(String i) {
+        if(i.contains("|"))
+        {
+            for(String j : i.split("\\Q|\\E"))
+            {
+                if(isValid(j))
+                {
+                    return true;
+                }
+            }
+        }
+
+        else if(i.contains("&"))
+        {
+            for(String j : i.split("\\Q&\\E"))
+            {
+                if(!isValid(j))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         String s = i;
         boolean not = false;
 
@@ -268,7 +300,7 @@ public class ResonanceTagManager {
 
             catch(Throwable e)
             {
-
+                e.printStackTrace();
             }
         }
 
@@ -280,17 +312,18 @@ public class ResonanceTagManager {
     }
 
     public void updatePlayable() {
-        playable.clear();
-
-        for(TagCondition i : getConfig().getConditions())
+        synchronized (playable)
         {
-            if(isValid(i))
+            playable.clear();
+
+            for(TagCondition i : getConfig().getConditions())
             {
-                queue(i);
+                if(isValid(i))
+                {
+                    queue(i);
+                }
             }
         }
-
-        Collections.shuffle(playable);
     }
 
     private void queue(TagCondition tc) {
@@ -342,7 +375,7 @@ public class ResonanceTagManager {
     }
 
     private void updateTimeTag() {
-        if(Minecraft.getMinecraft().world.isDaytime())
+        if(Minecraft.getMinecraft().world.getWorldTime() > 0 && Minecraft.getMinecraft().world.getWorldTime() < 12000)
         {
             tags.add("time_day");
         }

@@ -1,16 +1,20 @@
 package org.cyberpwn.resonance.queue;
 
+import net.minecraftforge.event.entity.ProjectileImpactEvent;
 import org.cyberpwn.resonance.config.ResonanceConfig;
 import org.cyberpwn.resonance.Resonance;
 import org.cyberpwn.resonance.player.Player;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Random;
 
 public class ResonanceQueue implements Queue{
     private Player nowPlaying;
     private List<Player> queue;
     private Thread worker;
+    private boolean next = false;
 
     public ResonanceQueue()
     {
@@ -31,72 +35,96 @@ public class ResonanceQueue implements Queue{
 
     public void tick()
     {
-        try
+        synchronized (queue)
         {
-            if(getNowPlaying() != null && getNowPlaying().getTimeRemainingFadeOut() < ResonanceConfig.transitionLatency)
+            try
             {
-                setNowPlaying(null);
+                if(getNowPlaying() != null && getNowPlaying().getTimeRemainingFadeOut() < ResonanceConfig.transitionLatency)
+                {
+                    setNowPlaying(null);
+                }
+
+                if(getNowPlaying() == null && hasNextSong())
+                {
+                    setNowPlaying(getQueue().get(new Random().nextInt(getQueue().size())));
+                }
+
+                if(getNowPlaying() != null && !getNowPlaying().isPlaying())
+                {
+                    getNowPlaying().play();
+                }
+
+                if(getNowPlaying() != null)
+                {
+                    boolean valid = false;
+
+                    for(Player i : queue)
+                    {
+                        if(i.getId().equals(nowPlaying.getId()))
+                        {
+                            valid = true;
+                            break;
+                        }
+                    }
+
+                    if(!valid)
+                    {
+                        System.out.println("INVALID NOTHING MATCHES " + nowPlaying.getId());
+
+                        for(Player i : queue)
+                        {
+                            System.out.println("- " + i.getId());
+                        }
+
+                        Player p = nowPlaying;
+                        nowPlaying = null;
+                        worker.interrupt();
+                        Resonance.execute(() -> {
+                            try {
+                                p.stop();
+                            } catch (Throwable e) {
+
+                            }
+                        });
+                    }
+                }
+
+                if(nowPlaying != null && next)
+                {
+                    next = false;
+                    Player p = nowPlaying;
+                    nowPlaying = null;
+                    worker.interrupt();
+                    Resonance.execute(() -> {
+                        try {
+                            p.stop();
+                        } catch (Throwable e) {
+
+                        }
+                    });
+                }
             }
 
-            if(getNowPlaying() == null && hasNextSong())
+            catch(Throwable e)
             {
-                setNowPlaying(getQueue().remove(0));
+                e.printStackTrace();
             }
-
-            if(getNowPlaying() != null && !getNowPlaying().isPlaying())
-            {
-                getNowPlaying().play();
-            }
-        }
-
-        catch(Throwable e)
-        {
-            e.printStackTrace();
         }
     }
 
     @Override
     public void inject(List<Player> playable) {
-        boolean has = false;
-        try{
-            if(getNowPlaying() != null && playable.size() > 0)
-            {
-                for(int i = 0; i < playable.size(); i++)
-                {
-                    if(playable.get(i).getId().equals(getNowPlaying().getId()))
-                    {
-                        playable.remove(i);
-                        has = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        catch(Throwable e)
+        synchronized (playable)
         {
-
-        }
-
-        replaceQueue(playable);
-
-        if(!has)
-        {
-            if(queue.isEmpty() && ResonanceConfig.stickyPlayback)
+            try
             {
-                return;
+                replaceQueue(playable);
             }
 
-            Player p = nowPlaying;
-            nowPlaying = null;
-            worker.interrupt();
-            Resonance.execute(() -> {
-                try {
-                    p.stop();
-                } catch (Throwable e) {
-
-                }
-            });
+            catch(Throwable e)
+            {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -113,5 +141,9 @@ public class ResonanceQueue implements Queue{
     @Override
     public List<Player> getQueue() {
         return queue;
+    }
+
+    public void queueNext() {
+        next = true;
     }
 }

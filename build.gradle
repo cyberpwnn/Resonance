@@ -14,6 +14,7 @@ apply plugin: 'net.minecraftforge.gradle.forge'
 version = "1.0"
 group = "org.cyberpwn.resonance" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = "resonance"
+boolean doubleInjectResources = true;
 
 sourceCompatibility = targetCompatibility = '1.8' // Need this here so eclipse task generates correctly.
 compileJava {
@@ -57,6 +58,12 @@ dependencies {
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
 
+}
+
+if(doubleInjectResources)
+{
+    sourceSets { main { output.resourcesDir = output.classesDir } }
+    System.out.println("Enabling Double Source Sets for ITJ (asset hack)");
 }
 
 processResources {

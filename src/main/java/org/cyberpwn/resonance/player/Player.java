@@ -33,6 +33,14 @@ public interface Player {
         });
     }
 
+    boolean isSudden();
+
+    void setSudden(boolean sudden);
+
+    int getPriority();
+
+    void setPriority(int p);
+
     boolean hasVolumeMultiplier(String stop);
 
     default void waitForVolumeTarget() throws InterruptedException {
@@ -52,13 +60,21 @@ public interface Player {
 
     default long getTimeRemainingFadeOut()
     {
-        long v = getTimeRemaining() - ResonanceConfig.transitionLatency;
-        return v < 0 ? 0 : v;
+        try
+        {
+            long v = getTimeRemaining() - ResonanceConfig.transitionLatency;
+            return v < 0 ? 0 : v;
+        }
+
+        catch(Throwable e)
+        {
+            return 0;
+        }
     }
 
     default double getMinecraftVolume()
     {
-        return Minecraft.getMinecraft().gameSettings.getSoundLevel(SoundCategory.MUSIC) * Minecraft.getMinecraft().gameSettings.getSoundLevel(SoundCategory.MASTER);
+        return Minecraft.getMinecraft().gameSettings.getSoundLevel(SoundCategory.MUSIC) * Minecraft.getMinecraft().gameSettings.getSoundLevel(SoundCategory.MASTER) * Resonance.dim;
     }
 
     public String getId();

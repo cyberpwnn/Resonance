@@ -2,6 +2,7 @@ package org.cyberpwn.resonance.queue;
 
 import org.cyberpwn.resonance.Resonance;
 import org.cyberpwn.resonance.player.Player;
+import org.lwjgl.Sys;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -13,7 +14,17 @@ public interface Queue {
 
     default Player getUpNext()
     {
-        return getQueue().size() > 0 ? getQueue().get(0) : null;
+        try
+        {
+            return getQueue().size() > 0 ? getQueue().get(0) : null;
+        }
+
+        catch(Throwable e)
+        {
+
+        }
+
+        return null;
     }
 
     List<Player> getQueue();
@@ -31,21 +42,6 @@ public interface Queue {
     default boolean hasNextSong()
     {
         return getUpNext() != null;
-    }
-
-    default void nextSong() {
-        if(hasNextSong())
-        {
-            Resonance.execute(() -> {
-                try {
-                    getNowPlaying().stop();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            });
-            Player p = getQueue().remove(0);
-            setNowPlaying(p);
-        }
     }
 
     default void replaceQueue(List<Player> queue)
