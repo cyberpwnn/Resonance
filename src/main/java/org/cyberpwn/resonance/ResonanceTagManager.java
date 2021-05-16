@@ -537,7 +537,12 @@ public class ResonanceTagManager {
     private void updateConflictTag() {
         if(conflict > 100)
         {
-            conflict *= 100;
+            conflict = 100;
+        }
+
+        if(conflict < 0)
+        {
+            conflict = 0;
         }
 
         conflict *= 0.865;
