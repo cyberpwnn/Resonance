@@ -2,14 +2,24 @@ package org.cyberpwn.resonance;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import net.minecraft.block.*;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityPlayerSP;
+import net.minecraft.client.gui.BossInfoClient;
+import net.minecraft.client.gui.GuiBossOverlay;
+import net.minecraft.init.Blocks;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.text.ITextComponent;
+import net.minecraft.util.text.TextComponentString;
+import net.minecraft.util.text.TextComponentTranslation;
 import net.minecraft.world.DimensionType;
 import net.minecraft.world.biome.Biome;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.fml.common.registry.ForgeRegistries;
+import net.minecraftforge.fml.relauncher.ReflectionHelper;
 import org.cyberpwn.resonance.config.QueueConfig;
+import org.cyberpwn.resonance.config.ResonanceConfig;
 import org.cyberpwn.resonance.config.TagCondition;
 import org.cyberpwn.resonance.config.TagConditionMode;
 import org.cyberpwn.resonance.player.FilePlayer;
@@ -19,6 +29,7 @@ import java.io.*;
 import java.util.*;
 
 public class ResonanceTagManager {
+    public static final String[] OBF_MAP_BOSS_INFOS = { "g", "field_184060_g", "mapBossInfos" };
     private List<String> tags;
     private File configFile;
     private long lastMod = -1;
@@ -29,15 +40,24 @@ public class ResonanceTagManager {
     private int cid = 0;
     private int ocid = 0;
     private boolean configChanged;
+    private double conflict = 0;
+    private double lushness = 0;
+    private Random random;
 
     public ResonanceTagManager()
     {
         configChanged = false;
+        random = new Random();
         tags = new ArrayList<>();
         playtimes = new HashMap<>();
         playable = new ArrayList<>();
         configFile = new File(Resonance.folder, "conditions.json");
         updatePlayable();
+    }
+
+    public double getConflict()
+    {
+        return conflict;
     }
 
     public List<String> getTags()
@@ -121,12 +141,22 @@ public class ResonanceTagManager {
         tags.remove(s);
     }
 
+    public double getLushness()
+    {
+        return lushness;
+    }
+
     public void tag(String s)
     {
         if(!s.contains(s))
         {
             tags.add(s);
         }
+    }
+
+    public void increaseConflict(double pts)
+    {
+        conflict+= pts;
     }
 
     public void writeTagGuide()
@@ -191,10 +221,15 @@ public class ResonanceTagManager {
         t.put("fp_low", "Food below 30%");
         t.put("dead", "Death screen");
         t.put("time_night", "Night time...");
+        t.put("storm", "If it's raining in the world & the current biome supports rain");
+        t.put("thunder", "If it's thundering in a biome where rain / snow can happen");
         t.put("time_day", "Day time...");
         t.put("light_dark", "Darkness");
         t.put("light_mid", "Middle range light");
         t.put("light_bright", "High light...");
+        t.put("lush_dense", "Lots of foliage, & greens");
+        t.put("lush_normal", "Medium amounts of foliage, & greens");
+        t.put("lush_barren", "Little to no foliage / greens");
 
         for(Biome i : ForgeRegistries.BIOMES.getValuesCollection())
         {
@@ -281,7 +316,12 @@ public class ResonanceTagManager {
 
         if(Minecraft.getMinecraft().world == null)
         {
-            tags.add("menu");
+            tags.add(Resonance.startupTag);
+
+            if(Resonance.startupTag.contains("startup."))
+            {
+                tags.add("startup");
+            }
         }
 
         else
@@ -296,6 +336,11 @@ public class ResonanceTagManager {
                 updateTimeTag();
                 updateLightTag(p);
                 updateDimensionTag();
+                updateConflictTag();
+                updateBossTag();
+                updateLush();
+                updateWeather();
+                updateSide();
             }
 
             catch(Throwable e)
@@ -308,6 +353,198 @@ public class ResonanceTagManager {
         {
             ocid = cid;
             updatePlayable();
+        }
+    }
+
+    private void updateSide() {
+        EntityPlayerSP p = Minecraft.getMinecraft().player;
+        BlockPos head = p.getPosition().add(0, 1, 0);
+
+        if(underCeiling(head)
+                &&underCeiling(head.add(1, 0, 0))
+                &&underCeiling(head.add(0, 0, 1))
+                &&underCeiling(head.add(-1, 0, 0))
+                &&underCeiling(head.add(0, 0, -1))
+        )
+        {
+            tags.add("inside");
+        }
+
+        else
+        {
+            tags.add("outside");
+        }
+    }
+
+    private boolean underCeiling(BlockPos p)
+    {
+        for(int i = 0; i < 16; i++)
+        {
+            if(i+p.getY() > 255)
+            {
+                break;
+            }
+
+            if(isSolid(Minecraft.getMinecraft().world.getBlockState(p.add(0, i, 0))))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isSolid(IBlockState b)
+    {
+        if((b.isFullBlock() || b.isFullCube()) && !b.isTranslucent())
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private void updateWeather() {
+        try
+        {
+            EntityPlayerSP p = Minecraft.getMinecraft().player;
+            Biome in = Minecraft.getMinecraft().world.getBiome(new BlockPos(p.posX, p.posY, p.posZ));
+
+            if(Minecraft.getMinecraft().world.isRaining())
+            {
+                if(in.canRain())
+                {
+                    tags.add("storm");
+                }
+            }
+
+            if(Minecraft.getMinecraft().world.isThundering())
+            {
+                if(in.canRain() || in.getRainfall() > 0)
+                {
+                    tags.add("thunder");
+                }
+            }
+        }
+
+        catch(Throwable e)
+        {
+
+        }
+    }
+
+    private void updateLush() {
+        try
+        {
+            int lushScore = 0;
+            EntityPlayerSP s = Minecraft.getMinecraft().player;
+            BlockPos b = s.getPosition();
+
+            for(int i = 0; i < ResonanceConfig.blockChecks; i++)
+            {
+                BlockPos bp = b.add(random.nextInt(ResonanceConfig.blockCheckRadius * 2) - ResonanceConfig.blockCheckRadius,
+                        random.nextInt(ResonanceConfig.blockCheckRadius) - ResonanceConfig.blockCheckRadius/2,
+                        random.nextInt(ResonanceConfig.blockCheckRadius * 2) - ResonanceConfig.blockCheckRadius);
+                Block block = s.world.getBlockState(bp).getBlock();
+                int flam = net.minecraft.init.Blocks.FIRE.getFlammability(block);
+                lushScore += flam/25;
+
+                if(block instanceof BlockFlower) {
+                    lushScore += 35;
+                }
+
+                if(block instanceof BlockLeaves) {
+                    lushScore += 125;
+                }
+
+                if(block instanceof BlockLog) {
+                    lushScore += 25;
+                }
+
+                if(block instanceof BlockVine) {
+                    lushScore += 145;
+                }
+
+                if(block instanceof BlockGrass)
+                {
+                    lushScore += 7;
+                }
+
+                if(block instanceof BlockTallGrass)
+                {
+                    lushScore += 20;
+                }
+            }
+
+            lushScore /= ResonanceConfig.blockChecks;
+            lushness += lushScore / 80.0;
+            lushness *= 0.85;
+            lushness = lushness > 1 ? 1 : lushness < 0 ? 0 : lushness;
+        }
+
+        catch(Throwable e)
+        {
+
+        }
+
+        if(lushness > 0.65)
+        {
+            tags.add("lush_dense");
+        }
+
+        if(lushness >= 0.25)
+        {
+            tags.add("lush_normal");
+        }
+
+        if(lushness < 0.25)
+        {
+            tags.add("lush_barren");
+        }
+    }
+
+    private void updateBossTag() {
+        try
+        {
+            GuiBossOverlay bossOverlay = Minecraft.getMinecraft().ingameGUI.getBossOverlay();
+            Map<UUID, BossInfoClient> map = ReflectionHelper.getPrivateValue(GuiBossOverlay.class, bossOverlay, OBF_MAP_BOSS_INFOS);
+            if(!map.isEmpty()) {
+                BossInfoClient first = map.get(map.keySet().iterator().next());
+                ITextComponent comp = first.getName();
+                String type = "";
+
+                if(comp instanceof TextComponentString) {
+                    type = comp.getStyle().getHoverEvent().getValue().getUnformattedComponentText();
+                    type = type.substring(type.indexOf("type:\"") + 6, type.length() - 2);
+                } else if(comp instanceof TextComponentTranslation) {
+                    type = ((TextComponentTranslation) comp).getKey();
+                    if(type.startsWith("entity.") && type.endsWith(".name"))
+                        type = type.substring(7, type.length() - 5);
+                }
+
+                if(type.equals("minecraft:wither") || type.equals("EnderDragon")) {
+                    tags.add("boss");
+                }
+            }
+        }
+
+        catch(Throwable e)
+        {
+
+        }
+    }
+
+    private void updateConflictTag() {
+        if(conflict > 100)
+        {
+            conflict *= 100;
+        }
+
+        conflict *= 0.865;
+
+        if(conflict > 15)
+        {
+            tags.add("combat");
         }
     }
 
@@ -331,6 +568,8 @@ public class ResonanceTagManager {
         {
             try {
                 Player p = new FilePlayer(new File(Resonance.music, i), getTimecode(new File(Resonance.music, i).getAbsolutePath()));
+                p.setPriority(tc.getPriority());
+                p.setSudden(tc.isSudden());
 
                 for(Player j : playable)
                 {

@@ -14,7 +14,7 @@ apply plugin: 'net.minecraftforge.gradle.forge'
 version = "1.0"
 group = "org.cyberpwn.resonance" // http://maven.apache.org/guides/mini/guide-naming-conventions.html
 archivesBaseName = "resonance"
-boolean doubleInjectResources = true;
+boolean doubleInjectResources = false;
 
 sourceCompatibility = targetCompatibility = '1.8' // Need this here so eclipse task generates correctly.
 compileJava {

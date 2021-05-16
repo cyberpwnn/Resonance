@@ -1,14 +1,10 @@
 package org.cyberpwn.resonance.queue;
 
-import net.minecraftforge.event.entity.ProjectileImpactEvent;
 import org.cyberpwn.resonance.config.ResonanceConfig;
 import org.cyberpwn.resonance.Resonance;
 import org.cyberpwn.resonance.player.Player;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class ResonanceQueue implements Queue{
     private Player nowPlaying;
@@ -46,7 +42,7 @@ public class ResonanceQueue implements Queue{
 
                 if(getNowPlaying() == null && hasNextSong())
                 {
-                    setNowPlaying(getQueue().get(new Random().nextInt(getQueue().size())));
+                    setNowPlaying(findNextSong());
                 }
 
                 if(getNowPlaying() != null && !getNowPlaying().isPlaying())
@@ -69,13 +65,6 @@ public class ResonanceQueue implements Queue{
 
                     if(!valid)
                     {
-                        System.out.println("INVALID NOTHING MATCHES " + nowPlaying.getId());
-
-                        for(Player i : queue)
-                        {
-                            System.out.println("- " + i.getId());
-                        }
-
                         Player p = nowPlaying;
                         nowPlaying = null;
                         worker.interrupt();
@@ -89,7 +78,7 @@ public class ResonanceQueue implements Queue{
                     }
                 }
 
-                if(nowPlaying != null && next)
+                if(nowPlaying != null && next || (hasSudden() && !nowPlaying.isSudden()))
                 {
                     next = false;
                     Player p = nowPlaying;
@@ -109,6 +98,69 @@ public class ResonanceQueue implements Queue{
             {
                 e.printStackTrace();
             }
+        }
+    }
+
+    private boolean hasSudden()
+    {
+        for(Player i : queue)
+        {
+            if(i.isSudden())
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private Player findNextSong() {
+        synchronized (queue)
+        {
+            try
+            {
+                Collections.shuffle(queue);
+
+                for(Player i : queue)
+                {
+                    if(i.isSudden())
+                    {
+                        return i;
+                    }
+                }
+
+                Player[] m = new Player[Math.max(Math.min(getQueue().size() / 3, 10), 1)];
+                for(int i = 0; i < m.length; i++)
+                {
+                    m[i] = getQueue().get(new Random().nextInt(getQueue().size()));
+                }
+
+                Player r = null;
+                int pri = Integer.MIN_VALUE;
+
+                for(Player i : m)
+                {
+                    if(i.getPriority() > pri)
+                    {
+                        pri = i.getPriority();
+                        r = i;
+                    }
+                }
+
+                if(r != null)
+                {
+                    return r;
+                }
+
+                return getQueue().get(new Random().nextInt(getQueue().size()));
+            }
+
+            catch(Throwable e)
+            {
+
+            }
+
+            return getQueue().get(0);
         }
     }
 

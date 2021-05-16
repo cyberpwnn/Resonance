@@ -4,6 +4,7 @@ import org.cyberpwn.resonance.Resonance;
 import org.cyberpwn.resonance.player.Player;
 import org.lwjgl.Sys;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,7 +32,21 @@ public interface Queue {
 
     default List<String> getQueueToString()
     {
-        return getQueue().stream().map(Object::toString).collect(Collectors.toList());
+        try
+        {
+            List<Player> q = getQueue();
+            synchronized (q)
+            {
+                return q.stream().map(Object::toString).collect(Collectors.toList());
+            }
+        }
+
+        catch(Throwable e)
+        {
+
+        }
+
+        return new ArrayList<>();
     }
 
     default void dumpQueue()

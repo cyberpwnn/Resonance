@@ -35,6 +35,14 @@ public class ResonanceConfig {
     @Config.Comment("When a new song is playing, show a now playing action message.S")
     public static boolean nowPlayingMessages = true;
 
+    @Config.Name("Block Checks")
+    @Config.Comment("How many blocks to check per cycle for things like leaves, wood, snow, dirt, ore, etc")
+    public static int blockChecks = 12;
+
+    @Config.Name("Block Check Radius")
+    @Config.Comment("The range of blocks to check per cycle (radius)")
+    public static int blockCheckRadius = 18;
+
     public static void load(final Configuration config) {
 
     }
