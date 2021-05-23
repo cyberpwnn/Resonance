@@ -167,25 +167,33 @@ public class Resonance
 
     @SubscribeEvent
     public void on(RenderGameOverlayEvent.Text event) {
-        if(!Minecraft.getMinecraft().gameSettings.showDebugInfo)
+        try
         {
-            if(ResonanceConfig.showTagsHud)
+            if(!Minecraft.getMinecraft().gameSettings.showDebugInfo)
             {
-                for(String i : tagManager.getTags())
+                if(ResonanceConfig.showTagsHud)
                 {
-                    event.getLeft().add(i);
+                    for(String i : tagManager.getTags())
+                    {
+                        event.getLeft().add(i);
+                    }
+
+                    event.getLeft().add("");
+                    event.getLeft().add("Conflict: " + (int)tagManager.getConflict()  + "%");
+                    event.getLeft().add("Lushness: " +(int)((tagManager.getLushness() * 100)) + "%" );
                 }
 
-                event.getLeft().add("");
-                event.getLeft().add("Conflict: " + (int)tagManager.getConflict()  + "%");
-                event.getLeft().add("Lushness: " +(int)((tagManager.getLushness() * 100)) + "%" );
+                if(ResonanceConfig.showQueueHud)
+                {
+                    event.getRight().add("Now Playing " + queue.getNowPlaying());
+                    queue.getQueueToString().forEach((i) -> event.getRight().add(i));
+                }
             }
+        }
 
-            if(ResonanceConfig.showQueueHud)
-            {
-                event.getRight().add("Now Playing " + queue.getNowPlaying());
-                queue.getQueueToString().forEach((i) -> event.getRight().add(i));
-            }
+        catch(Throwable e)
+        {
+
         }
     }
 
