@@ -27,6 +27,10 @@ public class ResonanceConfig {
     @Config.Comment("Show ingame tags that are active as a hud overlay.")
     public static boolean showTagsHud = false;
 
+    @Config.Name("Play Startup Music")
+    @Config.Comment("Play music during startup")
+    public static boolean startupMusic = true;
+
     @Config.Name("Show Queue Debug Overlay")
     @Config.Comment("Show the ingame queue that is active as a hud overlay.")
     public static boolean showQueueHud = false;

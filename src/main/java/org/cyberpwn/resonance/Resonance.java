@@ -36,6 +36,7 @@ public class Resonance
 {
     public static ExecutorService pool;
     public static int poolThreadCount = 1;
+    private static boolean donestartup = false;
     public static final String MODID = "resonance";
     public static final String NAME = "Resonance";
     public static final String VERSION = "@VERSION@";
@@ -78,37 +79,37 @@ public class Resonance
             while(true)
             {
                 try {
-                    Thread.sleep(ResonanceConfig.volumeLatency);
+                    Thread.sleep(ResonanceConfig.transitionLatency);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
+                    break;
                 }
-            }
-        });
 
-        execute(() -> {
-            while(true)
-            {
+                if(!ResonanceConfig.startupMusic && !donestartup)
+                {
+                    return;
+                }
                 tagManager.updateTags();
-                try {
-                    Thread.sleep(ResonanceConfig.transitionLatency);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                    break;
-                }
+
             }
         });
 
         execute(() -> {
             while(true)
             {
-                queue.inject(tagManager.getPlayable());
-
                 try {
                     Thread.sleep(ResonanceConfig.transitionLatency);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                     break;
                 }
+
+                if(!ResonanceConfig.startupMusic && !donestartup)
+                {
+                    return;
+                }
+
+                queue.inject(tagManager.getPlayable());
             }
         });
     }
@@ -247,6 +248,7 @@ public class Resonance
     @EventHandler
     public void loadComplete(FMLLoadCompleteEvent event)
     {
+        donestartup = true;
         startupTag = "menu";
     }
 

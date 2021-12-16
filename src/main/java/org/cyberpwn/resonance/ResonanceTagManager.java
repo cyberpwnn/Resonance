@@ -148,7 +148,12 @@ public class ResonanceTagManager {
 
     public void tag(String s)
     {
-        if(!s.contains(s))
+        if(!ResonanceConfig.startupMusic && s.contains("startup"))
+        {
+            return;
+        }
+
+        if(!tags.contains(s))
         {
             tags.add(s);
         }
