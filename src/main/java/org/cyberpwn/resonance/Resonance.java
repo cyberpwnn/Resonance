@@ -45,7 +45,7 @@ public class Resonance
     public static File folder;
     public static File music;
     public static double dim = 1;
-    public static double overrideVolume = 0.25;
+    public static Double overrideVolume = 0.25;
     public static String startupTag = "startup";
 
     public static KeyBinding[] keys = new KeyBinding[]{
