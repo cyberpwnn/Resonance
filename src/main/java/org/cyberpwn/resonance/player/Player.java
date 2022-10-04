@@ -72,9 +72,14 @@ public interface Player {
         }
     }
 
-    default double getMinecraftVolume()
-    {
-        return Minecraft.getMinecraft().gameSettings.getSoundLevel(SoundCategory.MUSIC) * Minecraft.getMinecraft().gameSettings.getSoundLevel(SoundCategory.MASTER) * Resonance.dim;
+    default double getMinecraftVolume() {
+        if(Resonance.overrideVolume != null) {
+            return Resonance.overrideVolume;
+        }
+
+        return Minecraft.getMinecraft().gameSettings.getSoundLevel(SoundCategory.MUSIC)
+            * Minecraft.getMinecraft().gameSettings.getSoundLevel(SoundCategory.MASTER)
+            * Resonance.dim;
     }
 
     public String getId();

@@ -45,6 +45,7 @@ public class Resonance
     public static File folder;
     public static File music;
     public static double dim = 1;
+    public static double overrideVolume = 0.25;
     public static String startupTag = "startup";
 
     public static KeyBinding[] keys = new KeyBinding[]{
@@ -58,6 +59,7 @@ public class Resonance
 
     private static void onStartup()
     {
+        overrideVolume = 0.25;
         folder = new File("resonance");
         music = new File(folder, "music");
         music.mkdirs();
@@ -206,6 +208,7 @@ public class Resonance
         startupTag = "startup.preinit";
         MinecraftForge.EVENT_BUS.register(this);
         tagManager.updatePlayable();
+        overrideVolume = 0.25;
     }
 
     private void registerKeys() {
@@ -218,6 +221,7 @@ public class Resonance
     @EventHandler
     public void init(FMLInitializationEvent event)
     {
+        overrideVolume = 0.25;
         startupTag = "startup.init";
         tagManager.updatePlayable();
     }
@@ -234,6 +238,7 @@ public class Resonance
     @EventHandler
     public void postInit(FMLPostInitializationEvent event)
     {
+        overrideVolume = 0.25;
         startupTag = "startup.postinit";
         tagManager.updatePlayable();
     }
@@ -250,6 +255,7 @@ public class Resonance
     {
         donestartup = true;
         startupTag = "menu";
+        overrideVolume = null;
     }
 
     static
