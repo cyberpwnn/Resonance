@@ -85,7 +85,7 @@ public class ResonanceTagManager {
             System.out.println("Configuration Reloaded");
             cid++;
         }
-        
+
         return config;
     }
 
@@ -680,10 +680,17 @@ public class ResonanceTagManager {
     }
 
     private void updateBiomeTag(EntityPlayerSP p) {
-        Biome in = Minecraft.getMinecraft().world.getBiome(new BlockPos(p.posX, p.posY, p.posZ));
-        tags.add("biome_" + in.getRegistryName().getResourcePath());
-        updateHumidityTag(in);
-        updateTemperatureTag(in);
+        try
+        {
+            Biome in = Minecraft.getMinecraft().world.getBiome(new BlockPos(p.posX, p.posY, p.posZ));
+            tags.add("biome_" + in.getRegistryName().getResourcePath());
+            updateHumidityTag(in);
+            updateTemperatureTag(in);
+        }
+
+        catch(Throwable e){
+
+        }
     }
 
     private void updateTemperatureTag(Biome in) {
@@ -721,6 +728,13 @@ public class ResonanceTagManager {
         else if(in.getRainfall() < 0.35)
         {
             tags.add("humid_dry");
+        }
+    }
+
+    public void trimConflict() {
+        if(conflict > 5)
+        {
+            conflict = 5;
         }
     }
 }

@@ -10,12 +10,10 @@ import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.fml.client.event.ConfigChangedEvent;
 import net.minecraftforge.fml.client.registry.ClientRegistry;
+import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
-import net.minecraftforge.fml.common.event.FMLInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLLoadCompleteEvent;
-import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.event.*;
 import net.minecraftforge.fml.common.eventhandler.EventPriority;
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 import net.minecraftforge.fml.common.gameevent.InputEvent;
@@ -31,6 +29,7 @@ import java.io.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+@Mod.EventBusSubscriber
 @Mod(modid = Resonance.MODID, name = Resonance.NAME, version = Resonance.VERSION, useMetadata = true)
 public class Resonance
 {
@@ -47,6 +46,14 @@ public class Resonance
     public static double dim = 1;
     public static Double overrideVolume = 0.25;
     public static String startupTag = "startup";
+
+    public static void combat(boolean active){
+        if(active){
+            tagManager.increaseConflict(100);
+        } else {
+            tagManager.trimConflict();
+        }
+    }
 
     public static KeyBinding[] keys = new KeyBinding[]{
             new KeyBinding("key.nextsong.desc", Keyboard.KEY_N, "key.resonance.category")

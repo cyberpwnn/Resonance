@@ -1,7 +1,5 @@
 package org.cyberpwn.resonance.player;
 
-import javafx.scene.media.MediaPlayer;
-import javafx.util.Duration;
 import org.cyberpwn.resonance.util.JFXInjector;
 
 import java.io.File;

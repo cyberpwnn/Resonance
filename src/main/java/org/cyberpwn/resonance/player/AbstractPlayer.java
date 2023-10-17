@@ -1,7 +1,6 @@
 package org.cyberpwn.resonance.player;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.TextComponentString;
 import org.cyberpwn.resonance.config.ResonanceConfig;
 import org.cyberpwn.resonance.Resonance;
