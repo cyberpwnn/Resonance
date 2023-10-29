@@ -97,6 +97,7 @@ public class ResonanceQueue implements Queue{
             catch(Throwable e)
             {
                 e.printStackTrace();
+                setNowPlaying(null);
             }
         }
     }
@@ -119,8 +120,6 @@ public class ResonanceQueue implements Queue{
         {
             try
             {
-                Collections.shuffle(queue);
-
                 for(Player i : queue)
                 {
                     if(i.isSudden())

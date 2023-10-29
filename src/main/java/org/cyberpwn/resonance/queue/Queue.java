@@ -5,6 +5,7 @@ import org.cyberpwn.resonance.player.Player;
 import org.lwjgl.Sys;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -62,6 +63,7 @@ public interface Queue {
     default void replaceQueue(List<Player> queue)
     {
         dumpQueue();
+        Collections.shuffle(queue);
         getQueue().addAll(queue);
     }
 
